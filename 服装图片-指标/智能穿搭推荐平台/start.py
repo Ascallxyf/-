@@ -9,6 +9,7 @@ import os
 import sys
 import subprocess
 import platform
+from pathlib import Path
 
 def check_python_version():
     """检查Python版本"""
@@ -106,23 +107,25 @@ def install_dependencies(missing_packages):
         return False
 
 def check_database():
-    """检查数据库是否已初始化"""
-    db_file = 'fashion_rec.db'
-    if os.path.exists(db_file):
-        print("✅ 数据库文件存在")
+    """检查数据库是否已初始化 (使用 pathlib)"""
+    # 使用 instance 目录下的默认数据库，若未创建则提示初始化
+    base_dir = Path(__file__).resolve().parent
+    instance_dir = base_dir / 'instance'
+    db_path = instance_dir / 'wardrobe.db'
+    if db_path.exists():
+        print(f"✅ 数据库文件存在: {db_path}")
         return True
     else:
-        print("❌ 数据库文件不存在，需要初始化")
+        print(f"❌ 数据库文件不存在: {db_path}，需要初始化")
         return False
 
 def initialize_database():
-    """初始化数据库"""
+    """初始化数据库 (使用 pathlib 调用脚本)"""
     print("正在初始化数据库...")
     try:
-        # 运行数据库初始化脚本
-        result = subprocess.run([sys.executable, 'init_db.py'], 
-                              capture_output=True, text=True)
-        
+        base_dir = Path(__file__).resolve().parent
+        script_path = base_dir / 'init_db.py'
+        result = subprocess.run([sys.executable, str(script_path)], capture_output=True, text=True)
         if result.returncode == 0:
             print("✅ 数据库初始化成功")
             return True
@@ -130,20 +133,19 @@ def initialize_database():
             print("❌ 数据库初始化失败")
             print("错误信息：", result.stderr)
             return False
-            
     except Exception as e:
         print(f"❌ 数据库初始化时出错：{e}")
         return False
 
 def start_application():
-    """启动应用"""
-    print("\n" + "="*50)
+    """启动应用 (使用 pathlib 获取 app.py)"""
+    print("\n" + "=" * 50)
     print("🚀 启动智能穿搭推荐平台...")
-    print("="*50)
-    
+    print("=" * 50)
     try:
-        # 启动Flask应用
-        os.system(f"{sys.executable} app.py")
+        base_dir = Path(__file__).resolve().parent
+        app_script = base_dir / 'main.py'
+        subprocess.run([sys.executable, str(app_script)])
     except KeyboardInterrupt:
         print("\n👋 应用已停止")
     except Exception as e:

@@ -4,9 +4,11 @@
 """
 import sys
 import os
+from pathlib import Path
 
-# 添加项目根目录到路径
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# 添加项目根目录到路径（使用 pathlib 计算）
+BASE_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(BASE_DIR))
 
 from backend.app import create_app
 from backend.models import db, User, UserProfile
