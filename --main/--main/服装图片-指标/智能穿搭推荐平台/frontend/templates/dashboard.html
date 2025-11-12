@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>仪表板 - 智能穿搭推荐平台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 250px;
+            z-index: 1000;
+        }
+        
+        .main-content {
+            margin-left: 250px;
+            min-height: 100vh;
+            background-color: #f8f9fa;
+        }
+        
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.8);
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .sidebar .nav-link i {
+            width: 20px;
+            margin-right: 10px;
+        }
+        
+        .card {
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .stats-card .card-body {
+            padding: 2rem;
+        }
+        
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        
+        .stats-label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        .recommendation-card {
+            border-left: 4px solid #667eea;
+        }
+        
+        .outfit-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        
+        .clothing-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .clothing-item:hover {
+            background-color: #f8f9fa;
+            transform: translateX(5px);
+        }
+        
+        .btn-custom {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+        }
+        
+        .btn-custom:hover {
+            color: white;
+            opacity: 0.9;
+        }
+        
+        .navbar-top {
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 1rem 0;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .quick-action-btn {
+            border: 2px dashed #667eea;
+            color: #667eea;
+            background: transparent;
+            padding: 2rem;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .quick-action-btn:hover {
+            background-color: #667eea;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+        <div class="p-3">
+            <h4 class="text-center">
+                <i class="fas fa-tshirt me-2"></i>智能穿搭
+            </h4>
+        </div>
+        <nav class="nav flex-column">
+            <a class="nav-link active" href="#dashboard" onclick="showSection('dashboard')">
+                <i class="fas fa-home"></i>仪表板
+            </a>
+            <a class="nav-link" href="#wardrobe" onclick="showSection('wardrobe')">
+                <i class="fas fa-closet"></i>我的衣橱
+            </a>
+            <a class="nav-link" href="#recommendations" onclick="showSection('recommendations')">
+                <i class="fas fa-magic"></i>穿搭推荐
+            </a>
+            <a class="nav-link" href="#outfits" onclick="showSection('outfits')">
+                <i class="fas fa-star"></i>我的搭配
+            </a>
+            <a class="nav-link" href="#profile" onclick="showSection('profile')">
+                <i class="fas fa-user"></i>个人档案
+            </a>
+            <a class="nav-link" href="#analytics" onclick="showSection('analytics')">
+                <i class="fas fa-chart-bar"></i>数据分析
+            </a>
+            <a class="nav-link" href="#settings" onclick="showSection('settings')">
+                <i class="fas fa-cog"></i>设置
+            </a>
+            <a class="nav-link" href="#" onclick="handleLogout()">
+                <i class="fas fa-sign-out-alt"></i>退出登录
+            </a>
+        </nav>
+    </div>
+
+    <!-- 主内容区域 -->
+    <div class="main-content">
+        <!-- 顶部导航栏 -->
+        <nav class="navbar-top">
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center w-100">
+                    <h3 class="mb-0" id="pageTitle">仪表板</h3>
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <span class="text-muted">欢迎回来，</span>
+                            <span class="fw-bold" id="userName">用户</span>
+                        </div>
+                        <div class="user-avatar" id="userAvatar">U</div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 仪表板内容 -->
+        <div id="dashboard-section" class="section-content">
+            <div class="container-fluid p-4">
+                <!-- 统计卡片 -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card stats-card">
+                            <div class="card-body text-center">
+                                <i class="fas fa-tshirt fa-2x mb-3"></i>
+                                <div class="stats-number" id="totalClothes">-</div>
+                                <div class="stats-label">服装单品</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-card">
+                            <div class="card-body text-center">
+                                <i class="fas fa-star fa-2x mb-3"></i>
+                                <div class="stats-number" id="totalOutfits">-</div>
+                                <div class="stats-label">穿搭方案</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-card">
+                            <div class="card-body text-center">
+                                <i class="fas fa-magic fa-2x mb-3"></i>
+                                <div class="stats-number" id="totalRecommendations">-</div>
+                                <div class="stats-label">AI推荐</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-card">
+                            <div class="card-body text-center">
+                                <i class="fas fa-heart fa-2x mb-3"></i>
+                                <div class="stats-number" id="favoriteCount">-</div>
+                                <div class="stats-label">收藏搭配</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 快速操作 -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="mb-3">快速操作</h5>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn quick-action-btn w-100" onclick="showAddClothingModal()">
+                            <i class="fas fa-plus fa-3x mb-3"></i>
+                            <div>添加服装</div>
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn quick-action-btn w-100" onclick="getRecommendation()">
+                            <i class="fas fa-magic fa-3x mb-3"></i>
+                            <div>获取推荐</div>
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn quick-action-btn w-100" onclick="showSection('profile')">
+                            <i class="fas fa-user-edit fa-3x mb-3"></i>
+                            <div>编辑档案</div>
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn quick-action-btn w-100" onclick="showSection('analytics')">
+                            <i class="fas fa-chart-line fa-3x mb-3"></i>
+                            <div>查看分析</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 最新推荐 -->
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-magic me-2"></i>今日推荐
+                                </h5>
+                            </div>
+                            <div class="card-body" id="todayRecommendations">
+                                <div class="text-center text-muted py-4">
+                                    <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                                    <div>正在加载推荐...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-calendar me-2"></i>今日穿搭
+                                </h5>
+                            </div>
+                            <div class="card-body" id="todayOutfit">
+                                <div class="text-center text-muted py-4">
+                                    <i class="fas fa-tshirt fa-3x mb-3"></i>
+                                    <div>暂无穿搭记录</div>
+                                    <button class="btn btn-custom btn-sm mt-2" onclick="getRecommendation()">
+                                        获取推荐
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 衣橱管理内容 -->
+        <div id="wardrobe-section" class="section-content d-none">
+            <div class="container-fluid p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4>我的衣橱</h4>
+                    <button class="btn btn-custom" onclick="showAddClothingModal()">
+                        <i class="fas fa-plus me-2"></i>添加服装
+                    </button>
+                </div>
+                
+                <!-- 筛选器 -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <select class="form-select" id="categoryFilter" onchange="filterClothing()">
+                                    <option value="">所有类别</option>
+                                    <option value="上装">上装</option>
+                                    <option value="下装">下装</option>
+                                    <option value="外套">外套</option>
+                                    <option value="鞋子">鞋子</option>
+                                    <option value="配饰">配饰</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="seasonFilter" onchange="filterClothing()">
+                                    <option value="">所有季节</option>
+                                    <option value="春季">春季</option>
+                                    <option value="夏季">夏季</option>
+                                    <option value="秋季">秋季</option>
+                                    <option value="冬季">冬季</option>
+                                    <option value="通用">通用</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control" placeholder="搜索..." id="searchInput" onkeyup="filterClothing()">
+                            </div>
+                            <div class="col-md-3">
+                                <div class="btn-group w-100" role="group">
+                                    <button class="btn btn-outline-secondary active" onclick="setViewMode('grid')">
+                                        <i class="fas fa-th"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary" onclick="setViewMode('list')">
+                                        <i class="fas fa-list"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 服装列表 -->
+                <div id="clothingGrid" class="row">
+                    <div class="col-12 text-center py-5">
+                        <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                        <div>正在加载衣橱...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 其他区域的占位符 -->
+        <div id="recommendations-section" class="section-content d-none">
+            <div class="container-fluid p-4">
+                <h4>穿搭推荐</h4>
+                <p>推荐功能开发中...</p>
+            </div>
+        </div>
+
+        <div id="outfits-section" class="section-content d-none">
+            <div class="container-fluid p-4">
+                <h4>我的搭配</h4>
+                <p>搭配管理功能开发中...</p>
+            </div>
+        </div>
+
+        <div id="profile-section" class="section-content d-none">
+            <div class="container-fluid p-4">
+                <h4>个人档案</h4>
+                <p>档案管理功能开发中...</p>
+            </div>
+        </div>
+
+        <div id="analytics-section" class="section-content d-none">
+            <div class="container-fluid p-4">
+                <h4>数据分析</h4>
+                <p>数据分析功能开发中...</p>
+            </div>
+        </div>
+
+        <div id="settings-section" class="section-content d-none">
+            <div class="container-fluid p-4">
+                <h4>设置</h4>
+                <p>设置功能开发中...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加服装模态框 -->
+    <div class="modal fade" id="addClothingModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">添加新服装</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addClothingForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="clothingName" class="form-label">服装名称</label>
+                                    <input type="text" class="form-control" id="clothingName" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="clothingCategory" class="form-label">类别</label>
+                                    <select class="form-select" id="clothingCategory" required>
+                                        <option value="">选择类别</option>
+                                        <option value="上装">上装</option>
+                                        <option value="下装">下装</option>
+                                        <option value="外套">外套</option>
+                                        <option value="鞋子">鞋子</option>
+                                        <option value="配饰">配饰</option>
+                                        <option value="连衣裙">连衣裙</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="clothingColor" class="form-label">颜色</label>
+                                    <input type="text" class="form-control" id="clothingColor">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="clothingBrand" class="form-label">品牌</label>
+                                    <input type="text" class="form-control" id="clothingBrand">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="clothingSeason" class="form-label">季节</label>
+                                    <select class="form-select" id="clothingSeason">
+                                        <option value="通用">通用</option>
+                                        <option value="春季">春季</option>
+                                        <option value="夏季">夏季</option>
+                                        <option value="秋季">秋季</option>
+                                        <option value="冬季">冬季</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="clothingStyle" class="form-label">风格</label>
+                                    <input type="text" class="form-control" id="clothingStyle" placeholder="如：休闲、正式、运动">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="clothingOccasion" class="form-label">场合</label>
+                                    <input type="text" class="form-control" id="clothingOccasion" placeholder="如：日常、工作、聚会">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="clothingImage" class="form-label">图片</label>
+                                    <input type="file" class="form-control" id="clothingImage" accept="image/*">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="clothingTags" class="form-label">标签</label>
+                            <input type="text" class="form-control" id="clothingTags" placeholder="用逗号分隔，如：舒适,百搭,时尚">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-custom" onclick="handleAddClothing()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script>
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUserProfile();
+            loadDashboardData();
+            loadWardrobe();
+        });
+
+        // 显示不同区域
+        function showSection(sectionName) {
+            // 隐藏所有区域
+            document.querySelectorAll('.section-content').forEach(section => {
+                section.classList.add('d-none');
+            });
+            
+            // 移除所有活动状态
+            document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // 显示目标区域
+            document.getElementById(sectionName + '-section').classList.remove('d-none');
+            
+            // 设置活动状态
+            document.querySelector(`[href="#${sectionName}"]`).classList.add('active');
+            
+            // 更新页面标题
+            const titles = {
+                'dashboard': '仪表板',
+                'wardrobe': '我的衣橱',
+                'recommendations': '穿搭推荐',
+                'outfits': '我的搭配',
+                'profile': '个人档案',
+                'analytics': '数据分析',
+                'settings': '设置'
+            };
+            document.getElementById('pageTitle').textContent = titles[sectionName] || '仪表板';
+        }
+
+        // 加载用户信息
+        async function loadUserProfile() {
+            try {
+                const response = await fetch('/api/user/profile');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('userName').textContent = data.user.username;
+                    document.getElementById('userAvatar').textContent = data.user.username.charAt(0).toUpperCase();
+                }
+            } catch (error) {
+                console.error('加载用户信息失败:', error);
+            }
+        }
+
+        // 加载仪表板数据
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('/api/stats/wardrobe');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('totalClothes').textContent = data.total_items || 0;
+                    // 其他统计数据待实现
+                    document.getElementById('totalOutfits').textContent = '0';
+                    document.getElementById('totalRecommendations').textContent = '0';
+                    document.getElementById('favoriteCount').textContent = '0';
+                }
+            } catch (error) {
+                console.error('加载仪表板数据失败:', error);
+            }
+        }
+
+        // 加载衣橱
+        async function loadWardrobe() {
+            try {
+                const response = await fetch('/api/wardrobe/list');
+                if (response.ok) {
+                    const data = await response.json();
+                    displayClothing(data.items);
+                }
+            } catch (error) {
+                console.error('加载衣橱失败:', error);
+            }
+        }
+
+        // 显示服装列表
+        function displayClothing(items) {
+            const grid = document.getElementById('clothingGrid');
+            
+            if (!items || items.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-12 text-center py-5">
+                        <i class="fas fa-tshirt fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">衣橱还是空的</h5>
+                        <p class="text-muted">添加您的第一件服装开始使用吧！</p>
+                        <button class="btn btn-custom" onclick="showAddClothingModal()">
+                            <i class="fas fa-plus me-2"></i>添加服装
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = items.map(item => `
+                <div class="col-md-4 col-lg-3 mb-4">
+                    <div class="card clothing-item-card">
+                        <div class="position-relative">
+                            ${item.image_url ? 
+                                `<img src="${item.image_url}" class="card-img-top" style="height: 200px; object-fit: cover;">` :
+                                `<div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                                    <i class="fas fa-tshirt fa-3x text-muted"></i>
+                                </div>`
+                            }
+                            <div class="position-absolute top-0 end-0 p-2">
+                                <button class="btn btn-sm btn-light rounded-pill" onclick="deleteClothing(${item.id})" title="删除">
+                                    <i class="fas fa-trash text-danger"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="card-title">${item.name}</h6>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">${item.category}</small>
+                                <span class="badge bg-secondary">${item.color || '未知'}</span>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar me-1"></i>${item.season || '通用'}
+                                    <i class="fas fa-star ms-2 me-1"></i>${item.style || '未分类'}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 显示添加服装模态框
+        function showAddClothingModal() {
+            const modal = new bootstrap.Modal(document.getElementById('addClothingModal'));
+            modal.show();
+        }
+
+        // 处理添加服装
+        async function handleAddClothing() {
+            const formData = new FormData();
+            
+            const imageFile = document.getElementById('clothingImage').files[0];
+            let imageUrl = null;
+            
+            // 如果有图片，先上传图片
+            if (imageFile) {
+                const uploadData = new FormData();
+                uploadData.append('file', imageFile);
+                
+                try {
+                    const uploadResponse = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: uploadData
+                    });
+                    
+                    if (uploadResponse.ok) {
+                        const uploadResult = await uploadResponse.json();
+                        imageUrl = uploadResult.file_url;
+                    }
+                } catch (error) {
+                    console.error('图片上传失败:', error);
+                }
+            }
+            
+            // 收集表单数据
+            const clothingData = {
+                name: document.getElementById('clothingName').value,
+                category: document.getElementById('clothingCategory').value,
+                color: document.getElementById('clothingColor').value,
+                brand: document.getElementById('clothingBrand').value,
+                season: document.getElementById('clothingSeason').value,
+                style: document.getElementById('clothingStyle').value,
+                occasion: document.getElementById('clothingOccasion').value,
+                image_url: imageUrl,
+                tags: document.getElementById('clothingTags').value.split(',').map(tag => tag.trim()).filter(tag => tag)
+            };
+            
+            try {
+                const response = await fetch('/api/wardrobe/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(clothingData)
+                });
+                
+                if (response.ok) {
+                    alert('服装添加成功！');
+                    document.getElementById('addClothingModal').querySelector('.btn-close').click();
+                    document.getElementById('addClothingForm').reset();
+                    loadWardrobe();
+                    loadDashboardData();
+                } else {
+                    const data = await response.json();
+                    alert(data.error || '添加失败');
+                }
+            } catch (error) {
+                alert('网络错误，请稍后重试');
+            }
+        }
+
+        // 删除服装
+        async function deleteClothing(itemId) {
+            if (!confirm('确定要删除这件服装吗？')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/wardrobe/${itemId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert('删除成功！');
+                    loadWardrobe();
+                    loadDashboardData();
+                } else {
+                    alert('删除失败');
+                }
+            } catch (error) {
+                alert('网络错误，请稍后重试');
+            }
+        }
+
+        // 筛选服装
+        function filterClothing() {
+            // 筛选功能待实现
+            console.log('筛选功能待实现');
+        }
+
+        // 设置视图模式
+        function setViewMode(mode) {
+            // 视图模式切换待实现
+            console.log('视图模式:', mode);
+        }
+
+        // 获取推荐
+        async function getRecommendation() {
+            try {
+                const response = await fetch('/api/recommend/outfit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        occasion: '日常',
+                        weather: '晴天',
+                        season: getCurrentSeason()
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    displayRecommendations(data.recommendations);
+                } else {
+                    alert('获取推荐失败');
+                }
+            } catch (error) {
+                alert('网络错误，请稍后重试');
+            }
+        }
+
+        // 显示推荐
+        function displayRecommendations(recommendations) {
+            const container = document.getElementById('todayRecommendations');
+            
+            if (!recommendations || recommendations.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-exclamation-circle fa-2x mb-3"></i>
+                        <div>暂无推荐，请先添加一些服装到衣橱</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = recommendations.map((rec, index) => `
+                <div class="recommendation-card mb-3 p-3 border rounded">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="mb-0">推荐方案 ${index + 1}</h6>
+                        <span class="badge bg-success">${Math.round(rec.confidence * 100)}% 匹配</span>
+                    </div>
+                    <p class="text-muted small mb-2">${rec.reasoning}</p>
+                    <div class="d-flex gap-2">
+                        ${rec.items.map(item => `
+                            <div class="text-center">
+                                <div class="bg-light rounded p-2 mb-1" style="width: 60px; height: 60px;">
+                                    <i class="fas fa-tshirt text-muted"></i>
+                                </div>
+                                <small class="text-muted">${item.name}</small>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 获取当前季节
+        function getCurrentSeason() {
+            const month = new Date().getMonth() + 1;
+            if (month >= 3 && month <= 5) return '春季';
+            if (month >= 6 && month <= 8) return '夏季';
+            if (month >= 9 && month <= 11) return '秋季';
+            return '冬季';
+        }
+
+        // 退出登录
+        async function handleLogout() {
+            if (confirm('确定要退出登录吗？')) {
+                try {
+                    await fetch('/api/user/logout', { method: 'POST' });
+                    window.location.href = '/';
+                } catch (error) {
+                    window.location.href = '/';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
