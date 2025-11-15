@@ -1,23 +1,31 @@
-"""ApiX Schemas (轻量版)
+"""ApiX Schemas 与验证工具
 
-说明：
-    - 提供最小的 dataclass Schema，用于与前端字段保持一致。
-    - 通过 validate_* 函数做基本存在性与结构校验。
-    - 后续可平滑迁移至 pydantic/marshmallow 获得更强的类型/格式验证。
-
-当前字段与前端 main.js 使用的字段映射：
-    WardrobeItemSchema: name, category, color, season, image_url
-    ProfileSchema: age, gender, styles, occasions, colors_preferred
-    RecommendationContextSchema: occasion, weather, location
-
-TODO：
-    1. 增加更严格的类型/长度/枚举值校验
-    2. 为 validate_* 增加错误码支持（而非仅抛 ValueError）
-    3. 可选：统一返回 errors 列表结构，便于前端展示多个问题
+特点：
+    - ValidationResult 支持错误与警告并可抛出 ValidationException。
+    - 复用 `_require_field` / `_validate_enum` / `_validate_list` 辅助函数，避免重复代码。
 """
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Iterable, Callable
+
+from .responses import ValidationException, get_message
+
+
+@dataclass
+class ValidationError:
+    """验证错误详情"""
+    field: str
+    code: str
+    message: str
+
+    def to_dict(self) -> Dict[str, str]:
+        return {
+            'field': self.field,
+            'code': self.code,
+            'message': self.message
+        }
+
 
 @dataclass
 class WardrobeItemSchema:
@@ -27,6 +35,12 @@ class WardrobeItemSchema:
     season: Optional[str] = None
     image_url: Optional[str] = None
 
+    # 枚举值定义
+    VALID_CATEGORIES = {'上装', '下装', '外套', '鞋子', '配饰', '连衣裙'}
+    VALID_SEASONS = {'春季', '夏季', '秋季', '冬季', '通用'}
+    VALID_COLORS = {'红色', '橙色', '黄色', '绿色', '蓝色', '紫色', '粉色', '白色', '黑色', '灰色', '棕色'}
+
+
 @dataclass
 class ProfileSchema:
     age: Optional[int] = None
@@ -35,23 +49,168 @@ class ProfileSchema:
     occasions: List[str] = field(default_factory=list)
     colors_preferred: List[str] = field(default_factory=list)
 
+    # 枚举值定义
+    VALID_GENDERS = {'男', '女', '其他'}
+
+
 @dataclass
 class RecommendationContextSchema:
     occasion: Optional[str] = None
     weather: Optional[str] = None
     location: Optional[str] = None
 
-# naive validators (expand as needed)
 
-def validate_wardrobe_item(data: Dict[str, Any]) -> WardrobeItemSchema:
-    if 'name' not in data or 'category' not in data:
-        raise ValueError('name and category are required')
-    return WardrobeItemSchema(**{k: data.get(k) for k in ['name','category','color','season','image_url']})
+class ValidationResult:
+    """验证结果封装"""
+
+    def __init__(self):
+        self.errors: List[ValidationError] = []
+        self.warnings: List[ValidationError] = []
+        self.data: Optional[Any] = None
+
+    def is_valid(self) -> bool:
+        return len(self.errors) == 0
+
+    def add_error(self, field: str, code: str, message: str):
+        self.errors.append(ValidationError(field, code, message))
+
+    def add_warning(self, field: str, code: str, message: str):
+        self.warnings.append(ValidationError(field, code, message))
+
+    def raise_for_errors(self) -> 'ValidationResult':
+        if not self.is_valid():
+            raise ValidationException({
+                'validation_errors': [e.to_dict() for e in self.errors],
+                'warnings': [w.to_dict() for w in self.warnings],
+            })
+        return self
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'valid': self.is_valid(),
+            'errors': [e.to_dict() for e in self.errors],
+            'warnings': [w.to_dict() for w in self.warnings],
+            'data': self.data
+        }
 
 
-def validate_profile(data: Dict[str, Any]) -> ProfileSchema:
-    return ProfileSchema(**{k: data.get(k) for k in ['age','gender','styles','occasions','colors_preferred']})
+def _require_field(
+    result: ValidationResult,
+    data: Dict[str, Any],
+    field: str,
+    *,
+    allow_blank: bool = False,
+    max_length: Optional[int] = None,
+):
+    value = data.get(field)
+    if value is None:
+        result.add_error(field, 'required', f'{field} {get_message("validation_error")}')
+        return None
+    if isinstance(value, str):
+        if not allow_blank and not value.strip():
+            result.add_error(field, 'required', f'{field} 不能为空')
+            return None
+        if max_length and len(value) > max_length:
+            result.add_error(field, 'too_long', f'{field} 不能超过 {max_length} 个字符')
+    return value
 
 
-def validate_recommendation_context(data: Dict[str, Any]) -> RecommendationContextSchema:
-    return RecommendationContextSchema(**{k: data.get(k) for k in ['occasion','weather','location']})
+def _validate_enum(result: ValidationResult, field: str, value: Optional[str], enum: Iterable[str]):
+    if value is None:
+        return
+    if value not in enum:
+        readable = ', '.join(sorted(enum))
+        result.add_error(field, 'invalid_choice', f'{field} 必须是: {readable}')
+
+
+def _validate_list(
+    result: ValidationResult,
+    data: Dict[str, Any],
+    field: str,
+    *,
+    max_items: int = 20,
+    validator: Optional[Callable[[str], bool]] = None,
+):
+    value = data.get(field)
+    if value is None:
+        data[field] = []
+        return
+    if not isinstance(value, list):
+        result.add_error(field, 'invalid_type', f'{field} 必须是数组')
+        return
+    if len(value) > max_items:
+        result.add_warning(field, 'too_many', f'{field} 最多 {max_items} 条，已截断')
+        del value[max_items:]
+    cleaned: List[str] = []
+    for item in value:
+        if not isinstance(item, str):
+            result.add_error(field, 'invalid_type', f'{field} 只能包含字符串')
+            continue
+        text = item.strip()
+        if not text:
+            continue
+        if validator and not validator(text):
+            result.add_error(field, 'invalid_value', f'{field} 包含无效值: {text}')
+            continue
+        cleaned.append(text)
+    data[field] = cleaned
+
+
+def validate_wardrobe_item(data: Dict[str, Any]) -> ValidationResult:
+    """验证衣橱物品数据"""
+    result = ValidationResult()
+
+    name = _require_field(result, data, 'name', max_length=50)
+    if name:
+        data['name'] = name.strip()
+
+    category = _require_field(result, data, 'category')
+    _validate_enum(result, 'category', category, WardrobeItemSchema.VALID_CATEGORIES)
+
+    _validate_enum(result, 'color', data.get('color'), WardrobeItemSchema.VALID_COLORS)
+    _validate_enum(result, 'season', data.get('season'), WardrobeItemSchema.VALID_SEASONS)
+
+    # 如果验证通过，创建 Schema 对象
+    if result.is_valid():
+        result.data = WardrobeItemSchema(**data)
+
+    return result
+
+
+def validate_profile(data: Dict[str, Any]) -> ValidationResult:
+    """验证用户画像数据"""
+    result = ValidationResult()
+
+    # 可选字段验证
+    if 'age' in data and data['age'] is not None:
+        if not isinstance(data['age'], int) or data['age'] < 1 or data['age'] > 120:
+            result.add_error('age', 'invalid_range', '年龄必须是1-120之间的整数')
+
+    if 'gender' in data and data['gender']:
+        _validate_enum(result, 'gender', data['gender'], ProfileSchema.VALID_GENDERS)
+
+    _validate_list(result, data, 'styles')
+    _validate_list(result, data, 'occasions')
+    _validate_list(result, data, 'colors_preferred', validator=lambda c: c in WardrobeItemSchema.VALID_COLORS)
+
+    # 如果验证通过，创建 Schema 对象
+    if result.is_valid():
+        result.data = ProfileSchema(**data)
+
+    return result
+
+
+def validate_recommendation_context(data: Dict[str, Any]) -> ValidationResult:
+    """验证推荐上下文数据"""
+    result = ValidationResult()
+
+    for field_name in ['occasion', 'weather', 'location']:
+        value = data.get(field_name)
+        if value and len(value) > 50:
+            result.add_warning(field_name, 'too_long', f'{field_name} 超过 50 字符，已截断')
+            data[field_name] = value[:50]
+
+    if result.is_valid():
+        result.data = RecommendationContextSchema(**data)
+
+    return result
