@@ -7,6 +7,33 @@
 版本: v2.0
 更新日期: 2025-11-11
 维护者: 开发团队
+--------------------------------------------------------------------------------
+增量更新：ApiX 模块统一封装（2025-11-15）
+--------------------------------------------------------------------------------
+
+1. 响应封装（backend/libs/apix/responses.py）
+   - 恢复国际化消息目录，并支持 `register_messages` 运行时扩展。
+   - 成功/失败响应自动附带语言、trace_id、UTC 时间戳等 `meta` 信息。
+   - 新增 `ApiXError`、`ValidationException` 及 `build_response`，将常见异常自动映射为统一结构。
+   - 在 `APIX_DEBUG` 或 `X-Debug-Mode: apix` 启用时附带调试字段（查询参数、异常摘要等）。
+   - 提供 `forbidden`、`throttled` 等常用错误响应，复用性更高。
+
+2. 数据验证（backend/libs/apix/schemas.py）
+   - `ValidationResult` 支持 warning、`raise_for_errors()` 与统一异常抛出。
+   - 通过 `_require_field`、`_validate_enum`、`_validate_list` 等辅助函数减少重复逻辑。
+   - 对衣橱、画像、推荐上下文字段进行更严格的长度/枚举校验，并与前端字段保持一致。
+
+3. 全局异常处理（backend/libs/apix/error_handlers.py）
+   - 统一处理 `ApiXError`、HTTP 404/401/403/429、SQLAlchemy、PermissionError 等场景。
+   - 保留数据库错误日志与服务器通用错误响应，确保可观察性。
+
+4. 测试与导出
+   - `backend/libs/apix/test_apix.py` 新增国际化注册、调试字段、限流响应与 `ValidationResult.raise_for_errors()` 等用例。
+   - `backend/libs/apix/__init__.py` 导出新的响应工具、异常类与辅助函数，方便业务层引用。
+
+5. 验证
+   - `python backend/libs/apix/test_apix.py`
+   - `python -m compileall backend/libs/apix`
 
 ================================================================================                              
                             版本 v2.2                       
@@ -563,6 +590,7 @@ DATABASE_URL=sqlite:///wardrobe.db  # 数据库 URL
 ================================================================================
                             文档结束
 ================================================================================
+
 
 
 
