@@ -43,6 +43,51 @@ stylex/__init__.py - 模块入口与 API 导出配置
 【依赖与集成】
 新增第三方依赖：requests（网络图片下载）、tempfile（临时文件管理）
 内部依赖：wardrobex.utils.extract_color_palette（颜色提取工具，保证格式对齐）
+新增功能
+wardrobex 核心接口（backend/libs/wardrobex/core.py）
+add_item(user_id: int, data: dict) -> dict
+输入：用户 ID + 衣物信息（名称 / 分类 / 季节 / 图片路径）
+输出：新增衣物的完整信息（含主色调、缩略图路径）
+自动调用图片工具提取颜色、生成缩略图
+update_item(item_id: int, data: dict) -> dict
+输入：衣物 ID + 待更新信息
+输出：更新后的衣物信息
+若更新图片则自动重新处理媒体资源
+delete_item(item_id: int) -> None
+输入：衣物 ID
+自动清理数据库中对应条目
+list_items(user_id: int) -> list[dict]
+输入：用户 ID
+输出：用户所有衣物的列表（含媒体资源信息）
+process_upload(file_path: str) -> dict
+输入：图片文件路径
+输出：图片元信息（主色调 / 宽高 / 缩略图路径）
+图片处理工具（backend/libs/wardrobex/image_utils.py）
+extract_color_palette(image_path: str, k: int = 5) -> list[tuple]
+输入：图片路径 + 主色调数量
+输出：前 k 个主色调的 RGB 元组
+generate_thumbnail(image_path: str, max_size: int = 512) -> str
+输入：图片路径 + 缩略图最大尺寸
+输出：缩略图的保存路径
+包导出配置（backend/libs/wardrobex/init.py）
+统一导出核心接口与图片工具函数
+简化外部模块的调用路径
+优化改进
+数据存储优化
+衣物表新增 thumbnail_url 字段，存储缩略图路径
+主色调以逗号分隔的 RGB 元组字符串存储，便于反序列化
+异常处理增强
+图片处理失败时返回空值 / 默认值，避免流程中断
+数据库操作增加事务管理，保证数据一致性
+代码可读性提升
+函数添加完整类型提示（Type Hints）
+关键逻辑增加注释说明
+文件变更
+【新增文件】
+backend/libs/wardrobex/core.py —— 衣物管理核心逻辑
+backend/libs/wardrobex/image_utils.py —— 图片处理工具
+【更新文件】
+backend/libs/wardrobex/init.py —— 补充包导出配置
 
 
 
@@ -518,6 +563,7 @@ DATABASE_URL=sqlite:///wardrobe.db  # 数据库 URL
 ================================================================================
                             文档结束
 ================================================================================
+
 
 
 
